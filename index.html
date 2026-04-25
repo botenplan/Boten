@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Boten Catalogus</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="hero-header" style="background-image: url('msc_ship.jpg');">
+    <div class="top-nav">
+        <div class="icon-circle" onclick="openCatalog()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </div>
+    </div>
+    <div class="search-container-wrapper">
+        <div class="search-mini">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a0acba" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="searchBar" placeholder="Zoek..." onkeyup="searchBoat()" autocomplete="off">
+        </div>
+        <div id="liveBoatList" class="live-search-results"></div>
+    </div>
+</div>
+
+<div class="container" id="mainView">
+    <input type="hidden" id="editId" value="">
+    
+    <div class="input-group">
+        <label class="label-tiny">NAAM VAN DE BOOT</label>
+        <input type="text" id="newBoatName" class="clean-input" placeholder="Naam invoeren...">
+        </div>
+
+    <div class="input-group">
+        <label class="label-tiny">SYSTEEM</label>
+        <div class="check-row">
+            <label class="check-item"><input type="checkbox" class="sys-check" value="Schavot"><span></span> Schavot</label>
+            <label class="check-item"><input type="checkbox" class="sys-check" value="Scheel"><span></span> Scheel</label>
+        </div>
+        <label class="check-item mt-10"><input type="checkbox" class="sys-check" id="mixTrigger" value="Mix" onchange="toggleMix(this.checked)"><span></span> Mix</label>
+        <div id="mixPanel" style="display:none; margin-top:10px;">
+            <input type="text" id="bayVan" class="clean-input small" placeholder="Bay van...">
+            <input type="text" id="bayTot" class="clean-input small" placeholder="Bay tot...">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label class="label-tiny">BAREN</label>
+        <div class="check-row">
+            <label class="check-item"><input type="checkbox" class="baren" value="Lange Baren"><span></span> Lange</label>
+            <label class="check-item"><input type="checkbox" class="baren" value="Korte Baren"><span></span> Korte</label>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label class="label-tiny">LASHING</label>
+        <div class="check-grid">
+            <label class="check-item"><input type="checkbox" class="lashing" value="Kruis"><span></span> Kruis</label>
+            <label class="check-item"><input type="checkbox" class="lashing" value="Opentrekker"><span></span> Opentrekker</label>
+            <label class="check-item"><input type="checkbox" class="lashing" value="6 lashing per tier"><span></span> 6 per tier</label>
+            <label class="check-item"><input type="checkbox" class="lashing" value="6 lashing per tier dunne baren"><span></span> 6 per tier (dun)</label>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label class="label-tiny">DRAAD</label>
+        <div class="check-row">
+            <label class="check-item"><input type="checkbox" class="draad" value="Fijn Draad"><span></span> Fijn Draad</label>
+            <label class="check-item"><input type="checkbox" class="draad" value="Grof Draad"><span></span> Grof Draad</label>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label class="label-tiny">TURNBUCKLES</label>
+        <div class="check-grid">
+            <label class="check-item"><input type="checkbox" class="tb" value="Klepjes"><span></span> Klepjes</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Geel TB"><span></span> Geel TB</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Schelpen"><span></span> Schelpen</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Buizen"><span></span> Buizen</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Haken"><span></span> Haken</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Ratelbl."><span></span> Ratelbl.</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Zware TB"><span></span> Zware TB</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Recht zet"><span></span> Recht zet</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Platte lassen"><span></span> Platte lassen</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Verlengstukken"><span></span> Verlengstukken</label>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label class="label-tiny">20FT </label>
+        <div class="check-grid">
+            <label class="check-item"><input type="checkbox" class="c20" value="Enkel"><span></span> Enkel</label>
+            <label class="check-item"><input type="checkbox" class="c20" value="Dubbel"><span></span> Dubbel</label>
+            <label class="check-item"><input type="checkbox" class="c20" value="Schavot E."><span></span> Schavot E.</label>
+            <label class="check-item"><input type="checkbox" class="c20" value="Schavot D."><span></span> Schavot D.</label>
+            <label class="check-item"><input type="checkbox" id="tegenElkaar" value="Tegen elkaar"><span></span> Tegen elkaar</label>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label class="label-tiny">OPKUIS</label>
+        <div class="check-row">
+            <label class="check-item"><input type="checkbox" class="opkuis" value="Housekeeping"><span></span> Housekeeping</label>
+            <label class="check-item"><input type="checkbox" class="opkuis" value="Weghangen"><span></span> Weghangen</label>
+            <label class="check-item"><input type="checkbox" class="opkuis" value="Bakjes"><span></span> Bakjes</label>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label class="label-tiny">FOTO'S & OPMERKINGEN</label>
+        <input type="file" id="photoInput" accept="image/*" multiple onchange="handleFileSelect(event)" style="display: none;">
+        <label for="photoInput" class="upload-link">📸 Voeg foto's toe</label>
+        <div id="imagePreviewContainer" class="img-row"></div>
+        <textarea id="extraNotes" class="clean-area" placeholder="Extra opmerkingen..."></textarea>
+    </div>
+
+    <div style="padding: 20px 0;">
+        <button id="saveBtn" class="btn-flat" onclick="saveBoat()">OPSLAAN</button>
+    </div>
+</div>
+
+<div id="detailView" class="container" style="display:none;">
+    <div class="nav-header">
+        <button class="back-btn" onclick="showMain()">←</button>
+    </div>
+    <div id="detailContent"></div>
+</div>
+
+<div id="catalogView" class="container" style="display:none;">
+    <div class="nav-header">
+        <button class="back-btn" onclick="showMain()">←</button>
+    </div>
+    <div id="fullCatalogList"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

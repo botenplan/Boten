@@ -1,0 +1,16 @@
+{
+  "name": "Boten Catalogus",
+  "short_name": "Boten",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#333333",
+  "icons": [
+    {
+      "src": "msc_ship.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
+
