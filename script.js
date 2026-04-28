@@ -108,12 +108,12 @@ function openCatalog() {
             div.style.display = "flex";
             div.style.justifyContent = "space-between";
             div.style.alignItems = "center";
-            // De extra tekst onder de naam is hier nu verwijderd
             div.innerHTML = `
-                <div onclick="showDetails(${b.id})" style="flex:1; padding: 10px 0;">
-                    <div style="font-size:18px; font-weight:700; color: #333;">${b.naam}</div>
+                <div onclick="showDetails(${b.id})" style="flex:1">
+                    <label class="label-tiny">BOOT NAAM</label>
+                    <div style="font-size:18px; font-weight:700;">${b.naam}</div>
                 </div>
-                <div style="color:#a0acba; font-size:22px; padding:10px; cursor:pointer;" onclick="editBoat(${b.id})">✎</div>
+                <div style="color:#a0acba; font-size:22px; padding:10px;" onclick="editBoat(${b.id})">✎</div>
             `;
             list.appendChild(div);
         });
@@ -126,7 +126,7 @@ function showDetails(id) {
         const cont = document.getElementById('detailContent');
         let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h1 style="margin:0">${b.naam}</h1>
-                        <button onclick="deleteBoat(${b.id})" style="background:none; border:none; font-size:20px; cursor:pointer;">🗑️</button>
+                        <button onclick="deleteBoat(${b.id})" style="background:none; border:none; font-size:20px;">🗑️</button>
                     </div>`;
 
         const addRow = (label, val) => {
@@ -136,25 +136,16 @@ function showDetails(id) {
             }
         };
 
-        if (b.systeem && b.systeem.length > 0) {
-            let sysText = b.systeem.join(', ');
-            if (b.systeem.includes('Mix')) sysText += ` (Bay ${b.mix.van}-${b.mix.tot})`;
-            addRow("SYSTEEM", sysText);
-        }
-        
+        addRow("SYSTEEM", b.systeem.includes('Mix') ? `Mix (Bay ${b.mix.van}-${b.mix.tot})` : b.systeem);
         addRow("BAREN", b.baren);
         addRow("LASHING", b.lashing);
         addRow("DRAAD", b.draad);
         addRow("TURNBUCKLES", b.tb);
-        
-        let c20Full = [...b.c20];
-        if(b.tegenElkaar) c20Full.push("Tegen elkaar");
-        addRow("20FT", c20Full);
-        
+        addRow("20FT", b.c20.concat(b.tegenElkaar ? ["Tegen elkaar"] : []));
         addRow("OPKUIS", b.opkuis);
         addRow("OPMERKINGEN", b.notities);
 
-        if(b.fotos && b.fotos.length > 0) {
+        if(b.fotos.length > 0) {
             html += `<label class="label-tiny" style="margin-top:15px">FOTO'S</label><div class="img-row">`;
             b.fotos.forEach(f => { html += `<img src="${f}" style="width:100px; height:100px; border-radius:10px; object-fit:cover;">`; });
             html += `</div>`;
