@@ -1,16 +1,15 @@
+
 <!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Boten Catalogus</title>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="hero-header" id="mainBanner" style="background-image: url('msc_ship.jpg');">
+<div class="hero-header" style="background-image: url('msc_ship.jpg');">
     <div class="top-nav">
         <div class="icon-circle" onclick="openLivePlanning()" style="margin-right: 10px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
@@ -33,6 +32,7 @@
     <div class="input-group">
         <label class="label-tiny">NAAM VAN DE BOOT</label>
         <input type="text" id="newBoatName" class="clean-input" placeholder="Naam invoeren..." autocomplete="off">
+        <div id="nameSuggestions" style="display: none; background: #f9f9f9; border-radius: 8px; margin-top: 5px; border: 1px solid #eee; max-height: 200px; overflow-y: auto; position: relative; z-index: 500;"></div>
     </div>
 
     <div class="input-group">
@@ -123,6 +123,22 @@
     </div>
 </div>
 
+<div id="catalogView" class="container" style="display:none;">
+    <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="back-btn" onclick="showMain()">←</button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <h1 style="margin: 0; font-size: 24px;">Overzicht</h1>
+            <span id="boatCount" style="color: #a0acba; font-size: 18px; font-weight: 500;">0</span>
+        </div>
+    </div>
+    <div id="fullCatalogList"></div>
+</div>
+
+<div id="detailView" class="container" style="display:none;">
+    <div class="nav-header"><button class="back-btn" onclick="openCatalog()">←</button></div>
+    <div id="detailContent"></div>
+</div>
+
 <div id="liveView" style="display:none;">
     <div class="planning-nav">
         <button onclick="showMain()" class="plan-back">←</button>
@@ -135,22 +151,6 @@
         <iframe id="frameIn" src="https://lisscheldemonden.eu/VerwachteReizen.aspx" class="plan-iframe"></iframe>
         <iframe id="frameOut" src="https://lisscheldemonden.eu/VerwachteReizen.aspx?soort=a" class="plan-iframe" style="display:none;"></iframe>
     </div>
-</div>
-
-<div id="detailView" class="container" style="display:none;">
-    <div class="nav-header"><button class="back-btn" onclick="showMain()">←</button></div>
-    <div id="detailContent"></div>
-</div>
-
-<div id="catalogView" class="container" style="display:none;">
-    <div class="nav-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <button class="back-btn" onclick="showMain()">←</button>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <h1 style="margin: 0; font-size: 24px;">Overzicht</h1>
-            <span id="boatCount" style="color: #a0acba; font-size: 18px; font-weight: 500;">0</span>
-        </div>
-    </div>
-    <div id="fullCatalogList"></div>
 </div>
 
 <script src="script.js"></script>
