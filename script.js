@@ -1,13 +1,20 @@
 let db;
 
-// 1. Service Worker Registratie (VOEGEVOEGD)
+// 1. De Kaart Functie (Stabiele versie naar VesselFinder)
+function openLiveMap(bootNaam) {
+    if (!bootNaam) return;
+    const mapUrl = "https://www.vesselfinder.com/vessels?name=" + encodeURIComponent(bootNaam);
+    window.location.href = mapUrl;
+}
+
+// 2. Service Worker Registratie
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
         .then(() => console.log("Service Worker Geregistreerd"))
         .catch(err => console.log("SW registratie mislukt", err));
 }
 
-// Database Initialisatie
+// 3. Database Initialisatie
 function initDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open("BotenDatabase", 1);
@@ -28,12 +35,14 @@ function initDB() {
 initDB().then(() => {
     const boatInput = document.getElementById('newBoatName');
     if(boatInput) boatInput.addEventListener('input', showNameSuggestions);
-});
+}).catch(err => console.error(err));
 
 let geselecteerdeFotos = [];
 
+// 4. Afbeeldingen verwerken & Compressie
 async function handleFileSelect(event) {
     const files = event.target.files;
+    if (!files) return;
     for (let i = 0; i < files.length; i++) {
         const compressedDataUrl = await compressImage(files[i]);
         geselecteerdeFotos.push(compressedDataUrl);
@@ -69,6 +78,7 @@ function compressImage(file) {
 
 function renderPreviews() {
     const container = document.getElementById('imagePreviewContainer');
+    if (!container) return;
     container.innerHTML = "";
     geselecteerdeFotos.forEach((src, index) => {
         const img = document.createElement('img');
@@ -78,8 +88,10 @@ function renderPreviews() {
     });
 }
 
+// 5. Boot Opslaan
 function saveBoat() {
-    const naam = document.getElementById('newBoatName').value.trim();
+    const naamInput = document.getElementById('newBoatName');
+    const naam = naamInput ? naamInput.value.trim() : "";
     if (!naam) { alert("Voer een naam in"); return; }
     
     const getChecked = (sel) => Array.from(document.querySelectorAll(sel + ':checked')).map(cb => cb.value);
@@ -95,7 +107,10 @@ function saveBoat() {
         opkuis: getChecked('.opkuis'),
         notities: document.getElementById('extraNotes').value,
         fotos: geselecteerdeFotos,
-        mix: { van: document.getElementById('bayVan').value, tot: document.getElementById('bayTot').value },
+        mix: { 
+            van: document.getElementById('bayVan').value, 
+            tot: document.getElementById('bayTot').value 
+        },
         tegenElkaar: document.getElementById('tegenElkaar').checked
     };
 
@@ -116,6 +131,7 @@ function saveBoat() {
     };
 }
 
+// 6. Overzichten & Details (Met locatie-pin icoon)
 function openCatalog() {
     document.getElementById('mainView').style.display = 'none';
     document.getElementById('detailView').style.display = 'none';
@@ -151,10 +167,16 @@ function showDetails(id) {
     db.transaction(["boten"], "readonly").objectStore("boten").get(id).onsuccess = (e) => {
         const b = e.target.result;
         const cont = document.getElementById('detailContent');
-        let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h1 style="margin:0; font-size: 20px;">${b.naam}</h1>
-                        <button onclick="deleteBoat(${b.id})" style="background:none; border:none; font-size:20px; cursor:pointer;">🗑️</button>
-                    </div>`;
+        
+        // Locatie-pin zonder groene achtergrond (📍)
+        let html = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h1 style="margin:0; font-size: 20px;">${b.naam}</h1>
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <button id="mapBtn" style="background:none; border:none; padding:5px; cursor:pointer; font-size:24px;">📍</button>
+                    <button id="delBtn" style="background:none; border:none; padding:5px; cursor:pointer; font-size:22px;">🗑️</button>
+                </div>
+            </div>`;
 
         const addRow = (label, val) => {
             if(val && (Array.isArray(val) ? val.length > 0 : val !== "")) {
@@ -188,24 +210,26 @@ function showDetails(id) {
         }
 
         cont.innerHTML = html;
-        // Verberg alles behalve details
+        
+        document.getElementById('mapBtn').onclick = () => openLiveMap(b.naam);
+        document.getElementById('delBtn').onclick = () => deleteBoat(b.id);
+
         document.getElementById('mainView').style.display = 'none';
         document.getElementById('catalogView').style.display = 'none';
-        document.getElementById('liveView').style.display = 'none';
-        document.getElementById('searchWrapper').style.display = 'none'; // Verberg zoekbalk bij details
         document.getElementById('detailView').style.display = 'block';
         window.scrollTo(0,0);
     };
 }
 
+// 7. Zoeken, Bewerken & Suggesties
 function editBoat(id) {
     db.transaction(["boten"], "readonly").objectStore("boten").get(id).onsuccess = (e) => {
         const b = e.target.result;
         document.getElementById('editId').value = b.id;
         document.getElementById('newBoatName').value = b.naam;
         document.getElementById('extraNotes').value = b.notities || "";
-        document.getElementById('bayVan').value = (b.mix && b.mix.van) ? b.mix.van : "";
-        document.getElementById('bayTot').value = (b.mix && b.mix.tot) ? b.mix.tot : "";
+        document.getElementById('bayVan').value = b.mix?.van || "";
+        document.getElementById('bayTot').value = b.mix?.tot || "";
         document.getElementById('tegenElkaar').checked = b.tegenElkaar || false;
         
         const checkAll = (sel, vals) => {
@@ -229,26 +253,6 @@ function editBoat(id) {
         document.getElementById('searchWrapper').style.display = 'flex';
         document.getElementById('saveBtn').innerText = "WIJZIGINGEN OPSLAAN";
         window.scrollTo(0,0);
-    };
-}
-
-function showNameSuggestions() {
-    const query = this.value.toLowerCase();
-    const container = document.getElementById('nameSuggestions');
-    if (query.length < 2) { container.style.display = 'none'; return; }
-    db.transaction(["boten"], "readonly").objectStore("boten").getAll().onsuccess = (e) => {
-        const matches = e.target.result.filter(b => b.naam.toLowerCase().includes(query));
-        container.innerHTML = "";
-        if (matches.length > 0) {
-            container.style.display = 'block';
-            matches.forEach(m => {
-                const d = document.createElement('div');
-                d.style.padding = "10px"; d.style.borderBottom = "1px solid #eee"; d.style.cursor = "pointer";
-                d.innerHTML = `Bestaat al: <b>${m.naam}</b>`;
-                d.onclick = () => { container.style.display='none'; showDetails(m.id); };
-                container.appendChild(d);
-            });
-        } else { container.style.display = 'none'; }
     };
 }
 
@@ -279,6 +283,28 @@ function searchBoat() {
     };
 }
 
+function showNameSuggestions() {
+    const query = this.value.toLowerCase();
+    const container = document.getElementById('nameSuggestions');
+    if (!container) return;
+    if (query.length < 2) { container.style.display = 'none'; return; }
+    db.transaction(["boten"], "readonly").objectStore("boten").getAll().onsuccess = (e) => {
+        const matches = e.target.result.filter(b => b.naam.toLowerCase().includes(query));
+        container.innerHTML = "";
+        if (matches.length > 0) {
+            container.style.display = 'block';
+            matches.forEach(m => {
+                const d = document.createElement('div');
+                d.style.padding = "10px"; d.style.borderBottom = "1px solid #eee"; d.style.cursor = "pointer";
+                d.innerHTML = `Bestaat al: <b>${m.naam}</b>`;
+                d.onclick = () => { container.style.display='none'; showDetails(m.id); };
+                container.appendChild(d);
+            });
+        } else { container.style.display = 'none'; }
+    };
+}
+
+// 8. Navigatie & Hulpschermen
 function showMain() {
     document.getElementById('editId').value = "";
     document.getElementById('newBoatName').value = "";
@@ -299,7 +325,11 @@ function showMain() {
     toggleMix(false);
 }
 
-function toggleMix(s) { document.getElementById('mixPanel').style.display = s ? 'block' : 'none'; }
+function toggleMix(s) { 
+    const panel = document.getElementById('mixPanel');
+    if(panel) panel.style.display = s ? 'block' : 'none'; 
+}
+
 function openLivePlanning() { 
     document.getElementById('mainView').style.display = 'none'; 
     document.getElementById('catalogView').style.display = 'none'; 
@@ -307,7 +337,13 @@ function openLivePlanning() {
     document.getElementById('liveView').style.display = 'block'; 
     document.getElementById('searchWrapper').style.display = 'none'; 
 }
-function deleteBoat(id) { if(confirm("Wissen?")) db.transaction(["boten"],"readwrite").objectStore("boten").delete(id).onsuccess=()=>openCatalog(); }
+
+function deleteBoat(id) { 
+    if(confirm("Boot verwijderen?")) {
+        db.transaction(["boten"],"readwrite").objectStore("boten").delete(id).onsuccess = () => openCatalog();
+    }
+}
+
 function switchPlanning(t) {
     document.getElementById('frameIn').style.display = t === 'in' ? 'block' : 'none';
     document.getElementById('frameOut').style.display = t === 'out' ? 'block' : 'none';
