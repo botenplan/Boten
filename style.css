@@ -29,7 +29,7 @@ body { font-family: -apple-system, sans-serif; background-color: #ffffff; margin
 .plan-tab.active { background: white; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 .plan-back { background: #333; color: white; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 16px; }
 .iframe-container { width: 100%; height: calc(100vh - 65px); overflow: auto; }
-.plan-iframe { width: 300%; height: 300%; border: none; transform: scale(0.333); transform-origin: 0 0; }
+.plan-iframe { width: 240%; height: 240%; border: none; transform: scale(0.5); transform-origin: 0 0; }
 .back-btn { background: none; border: none; font-size: 22px; color: #333; cursor: pointer; }
 .mt-10 { margin-top: 10px; }
 p
