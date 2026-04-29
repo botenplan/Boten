@@ -32,10 +32,6 @@ body { font-family: -apple-system, sans-serif; background-color: #ffffff; margin
 .plan-iframe { width: 200%; height: 200%; border: none; transform: scale(0.5); transform-origin: 0 0; }
 .back-btn { background: none; border: none; font-size: 22px; color: #333; cursor: pointer; }
 .mt-10 { margin-top: 10px; }
-#mapBtn {
-    background: none !important;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
+
 }
 
