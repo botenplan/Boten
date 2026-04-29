@@ -1,22 +1,37 @@
 let db;
 
-// 1. De Kaart Functie (Stabiele versie naar VesselFinder)
-function openLiveMap(bootNaam) {
-    if (!bootNaam) return;
-    const mapUrl = "https://www.vesselfinder.com/vessels?name=" + encodeURIComponent(bootNaam);
-    window.location.href = mapUrl;
+// Functie om de live kaart te openen of te sluiten
+function toggleMap(show, mmsi = '', naam = '') {
+    const wrapper = document.getElementById('mapWrapper');
+    const frame = document.getElementById('liveMapFrame');
+    
+    if (show) {
+        // Gebruik MMSI als dat er is, anders de naam
+        let url = "";
+        if (mmsi && mmsi.toString().length > 5) {
+            url = `https://www.vesselfinder.com/aismap?zoom=13&mmsi=${mmsi.trim()}&names=true`;
+        } else {
+            url = `https://www.vesselfinder.com/aismap?zoom=13&name=${encodeURIComponent(naam)}&names=true`;
+        }
+        
+        frame.src = url;
+        wrapper.style.display = 'block';
+    } else {
+        wrapper.style.display = 'none';
+        frame.src = ""; // Stop met laden om data en batterij te besparen
+    }
 }
 
-// 2. Service Worker Registratie
+// Service Worker Registratie
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
         .then(() => console.log("Service Worker Geregistreerd"))
         .catch(err => console.log("SW registratie mislukt", err));
 }
 
-// 3. Database Initialisatie
+// Database Initialisatie
 function initDB() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const request = indexedDB.open("BotenDatabase", 1);
         request.onupgradeneeded = (e) => {
             db = e.target.result;
@@ -28,18 +43,17 @@ function initDB() {
             db = e.target.result;
             resolve(db);
         };
-        request.onerror = (e) => reject("DB Error: " + e.target.errorCode);
     });
 }
 
 initDB().then(() => {
     const boatInput = document.getElementById('newBoatName');
     if(boatInput) boatInput.addEventListener('input', showNameSuggestions);
-}).catch(err => console.error(err));
+});
 
 let geselecteerdeFotos = [];
 
-// 4. Afbeeldingen verwerken & Compressie
+// Foto's verwerken
 async function handleFileSelect(event) {
     const files = event.target.files;
     if (!files) return;
@@ -55,21 +69,15 @@ function compressImage(file) {
     return new Promise((resolve) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = (event) => {
+        reader.onload = (e) => {
             const img = new Image();
-            img.src = event.target.result;
+            img.src = e.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                let width = img.width; 
-                let height = img.height;
-                const max_size = 800;
-                if (width > height) {
-                    if (width > max_size) { height *= max_size / width; width = max_size; }
-                } else {
-                    if (height > max_size) { width *= max_size / height; height = max_size; }
-                }
-                canvas.width = width; canvas.height = height;
-                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                let w = img.width; let h = img.height;
+                if (w > 800) { h *= 800/w; w = 800; }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                 resolve(canvas.toDataURL('image/jpeg', 0.7));
             };
         };
@@ -77,27 +85,27 @@ function compressImage(file) {
 }
 
 function renderPreviews() {
-    const container = document.getElementById('imagePreviewContainer');
-    if (!container) return;
-    container.innerHTML = "";
+    const cont = document.getElementById('imagePreviewContainer');
+    cont.innerHTML = "";
     geselecteerdeFotos.forEach((src, index) => {
         const img = document.createElement('img');
         img.src = src; img.className = "preview-thumb";
         img.onclick = () => { geselecteerdeFotos.splice(index, 1); renderPreviews(); };
-        container.appendChild(img);
+        cont.appendChild(img);
     });
 }
 
-// 5. Boot Opslaan
+// Opslaan inclusief MMSI
 function saveBoat() {
-    const naamInput = document.getElementById('newBoatName');
-    const naam = naamInput ? naamInput.value.trim() : "";
-    if (!naam) { alert("Voer een naam in"); return; }
+    const naam = document.getElementById('newBoatName').value.trim();
+    const mmsi = document.getElementById('boatMmsi').value.trim();
+    if (!naam) return alert("Voer een naam in");
     
     const getChecked = (sel) => Array.from(document.querySelectorAll(sel + ':checked')).map(cb => cb.value);
     
     const bootData = {
         naam: naam,
+        mmsi: mmsi,
         systeem: getChecked('.sys-check'),
         baren: getChecked('.baren'),
         lashing: getChecked('.lashing'),
@@ -107,10 +115,7 @@ function saveBoat() {
         opkuis: getChecked('.opkuis'),
         notities: document.getElementById('extraNotes').value,
         fotos: geselecteerdeFotos,
-        mix: { 
-            van: document.getElementById('bayVan').value, 
-            tot: document.getElementById('bayTot').value 
-        },
+        mix: { van: document.getElementById('bayVan').value, tot: document.getElementById('bayTot').value },
         tegenElkaar: document.getElementById('tegenElkaar').checked
     };
 
@@ -125,65 +130,36 @@ function saveBoat() {
         store.add(bootData);
     }
 
-    transaction.oncomplete = () => { 
-        alert("Boot opgeslagen!"); 
-        showMain(); 
-    };
+    transaction.oncomplete = () => { alert("Boot opgeslagen!"); showMain(); };
 }
 
-// 6. Overzichten & Details (Met locatie-pin icoon)
-function openCatalog() {
-    document.getElementById('mainView').style.display = 'none';
-    document.getElementById('detailView').style.display = 'none';
-    document.getElementById('liveView').style.display = 'none';
-    document.getElementById('catalogView').style.display = 'block';
-    document.getElementById('searchWrapper').style.display = 'none';
-    
-    const list = document.getElementById('fullCatalogList');
-    list.innerHTML = "";
-
-    db.transaction(["boten"], "readonly").objectStore("boten").getAll().onsuccess = (e) => {
-        const boten = e.target.result.sort((a, b) => a.naam.localeCompare(b.naam));
-        document.getElementById('boatCount').innerText = boten.length;
-        boten.forEach(b => {
-            const div = document.createElement('div');
-            div.className = "input-group";
-            div.style.display = "flex";
-            div.style.justifyContent = "space-between";
-            div.style.alignItems = "center";
-            div.style.padding = "12px 0";
-            div.innerHTML = `
-                <div onclick="showDetails(${b.id})" style="flex:1; cursor:pointer;">
-                    <div style="font-size:16px; font-weight:600; color: #333;">${b.naam}</div>
-                </div>
-                <div style="color:#a0acba; font-size:18px; padding:5px 10px; cursor:pointer;" onclick="event.stopPropagation(); editBoat(${b.id})">✎</div>
-            `;
-            list.appendChild(div);
-        });
-    };
-}
-
+// Detail View (Met de Map Pin)
 function showDetails(id) {
     db.transaction(["boten"], "readonly").objectStore("boten").get(id).onsuccess = (e) => {
         const b = e.target.result;
-        const cont = document.getElementById('detailContent');
         
-        // Locatie-pin zonder groene achtergrond (📍)
-        let html = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h1 style="margin:0; font-size: 20px;">${b.naam}</h1>
-                <div style="display:flex; gap:15px; align-items:center;">
-                    <button id="mapBtn" style="background:none; border:none; padding:5px; cursor:pointer; font-size:24px;">📍</button>
-                    <button id="delBtn" style="background:none; border:none; padding:5px; cursor:pointer; font-size:22px;">🗑️</button>
-                </div>
-            </div>`;
-
+        // Zorg dat de kaart eerst verborgen en gereset is
+        toggleMap(false);
+        
+        // Pas de titel aan
+        document.getElementById('detailName').innerText = b.naam;
+        
+        // Koppel de knoppen aan de juiste ID en gegevens
+        document.getElementById('mapBtn').onclick = () => toggleMap(true, b.mmsi, b.naam);
+        document.getElementById('delBtn').onclick = () => deleteBoat(b.id);
+        
+        // Genereer de HTML voor de rest van de gegevens
+        const cont = document.getElementById('detailContent');
+        let html = "";
+        
         const addRow = (label, val) => {
             if(val && (Array.isArray(val) ? val.length > 0 : val !== "")) {
                 html += `<div class="input-group"><label class="label-tiny">${label}</label>
                          <div style="font-size:16px; font-weight:500;">${Array.isArray(val) ? val.join(', ') : val}</div></div>`;
             }
         };
+
+        // HIER IS DE MMSI REGEL VERWIJDERD! HIJ STAAT NIET MEER IN HET OVERZICHT.
 
         let systeemTekst = b.systeem ? b.systeem.join(', ') : "";
         if(b.systeem && b.systeem.includes('Mix')) {
@@ -208,11 +184,11 @@ function showDetails(id) {
             b.fotos.forEach(f => { html += `<img src="${f}" style="width:120px; height:120px; border-radius:10px; object-fit:cover;">`; });
             html += `</div>`;
         }
+        
+        // Voeg een knop 'Bewerken' toe onderaan de details
+        html += `<div style="padding: 20px 0;"><button class="btn-flat" onclick="editBoat(${b.id})">BEWERKEN</button></div>`;
 
         cont.innerHTML = html;
-        
-        document.getElementById('mapBtn').onclick = () => openLiveMap(b.naam);
-        document.getElementById('delBtn').onclick = () => deleteBoat(b.id);
 
         document.getElementById('mainView').style.display = 'none';
         document.getElementById('catalogView').style.display = 'none';
@@ -221,12 +197,42 @@ function showDetails(id) {
     };
 }
 
-// 7. Zoeken, Bewerken & Suggesties
+function openCatalog() {
+    document.getElementById('mainView').style.display = 'none';
+    document.getElementById('catalogView').style.display = 'block';
+    document.getElementById('detailView').style.display = 'none';
+    document.getElementById('liveView').style.display = 'none';
+    
+    const list = document.getElementById('fullCatalogList');
+    list.innerHTML = "";
+
+    db.transaction(["boten"], "readonly").objectStore("boten").getAll().onsuccess = (e) => {
+        const boten = e.target.result.sort((a, b) => a.naam.localeCompare(b.naam));
+        document.getElementById('boatCount').innerText = boten.length;
+        boten.forEach(b => {
+            const div = document.createElement('div');
+            div.className = "input-group";
+            div.style.display = "flex";
+            div.style.justifyContent = "space-between";
+            div.style.alignItems = "center";
+            div.style.padding = "12px 0";
+            div.innerHTML = `
+                <div onclick="showDetails(${b.id})" style="flex:1; cursor:pointer;">
+                    <div style="font-size:16px; font-weight:600; color: #333;">${b.naam}</div>
+                </div>
+                <div style="color:#a0acba; font-size:18px; padding:5px 10px; cursor:pointer;" onclick="editBoat(${b.id})">✎</div>
+            `;
+            list.appendChild(div);
+        });
+    };
+}
+
 function editBoat(id) {
     db.transaction(["boten"], "readonly").objectStore("boten").get(id).onsuccess = (e) => {
         const b = e.target.result;
         document.getElementById('editId').value = b.id;
         document.getElementById('newBoatName').value = b.naam;
+        document.getElementById('boatMmsi').value = b.mmsi || "";
         document.getElementById('extraNotes').value = b.notities || "";
         document.getElementById('bayVan').value = b.mix?.van || "";
         document.getElementById('bayTot').value = b.mix?.tot || "";
@@ -304,10 +310,10 @@ function showNameSuggestions() {
     };
 }
 
-// 8. Navigatie & Hulpschermen
 function showMain() {
     document.getElementById('editId').value = "";
     document.getElementById('newBoatName').value = "";
+    document.getElementById('boatMmsi').value = ""; 
     document.getElementById('extraNotes').value = "";
     document.getElementById('bayVan').value = "";
     document.getElementById('bayTot').value = "";
@@ -325,6 +331,12 @@ function showMain() {
     toggleMix(false);
 }
 
+function deleteBoat(id) { 
+    if(confirm("Boot verwijderen?")) {
+        db.transaction(["boten"],"readwrite").objectStore("boten").delete(id).onsuccess = () => openCatalog();
+    }
+}
+
 function toggleMix(s) { 
     const panel = document.getElementById('mixPanel');
     if(panel) panel.style.display = s ? 'block' : 'none'; 
@@ -336,12 +348,6 @@ function openLivePlanning() {
     document.getElementById('detailView').style.display = 'none';
     document.getElementById('liveView').style.display = 'block'; 
     document.getElementById('searchWrapper').style.display = 'none'; 
-}
-
-function deleteBoat(id) { 
-    if(confirm("Boot verwijderen?")) {
-        db.transaction(["boten"],"readwrite").objectStore("boten").delete(id).onsuccess = () => openCatalog();
-    }
 }
 
 function switchPlanning(t) {
