@@ -82,7 +82,7 @@
         <label class="label-tiny">TURNBUCKLES</label>
         <div class="check-grid">
             <label class="check-item"><input type="checkbox" class="tb" value="Klepjes"><span></span> Klepjes</label>
-            <label class="check-item"><input type="checkbox" class="tb" value="Gele TB"><span></span> Gele TB</label>
+            <label class="check-item"><input type="checkbox" class="tb" value="Geel TB"><span></span> Geel TB</label>
             <label class="check-item"><input type="checkbox" class="tb" value="Schelpen"><span></span> Schelpen</label>
             <label class="check-item"><input type="checkbox" class="tb" value="Buizen"><span></span> Buizen</label>
             <label class="check-item"><input type="checkbox" class="tb" value="Haken"><span></span> Haken</label>
@@ -170,6 +170,11 @@
         <iframe id="frameIn" src="https://lisscheldemonden.eu/VerwachteReizen.aspx" class="plan-iframe"></iframe>
         <iframe id="frameOut" src="https://lisscheldemonden.eu/VerwachteReizen.aspx?soort=a" class="plan-iframe" style="display:none;"></iframe>
     </div>
+</div>
+
+<!-- Zoom Overlay voor foto's -->
+<div id="photoZoomOverlay" onclick="this.style.display='none'" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; cursor: pointer;">
+    <img id="zoomedImage" src="" style="max-width: 95%; max-height: 90%; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
 </div>
 
 <script src="script.js"></script>
