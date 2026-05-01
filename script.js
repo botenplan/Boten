@@ -6,7 +6,6 @@ function toggleMap(show, mmsi = '', naam = '') {
     const frame = document.getElementById('liveMapFrame');
     
     if (show) {
-        // Gebruik MMSI als dat er is, anders de naam
         let url = "";
         if (mmsi && mmsi.toString().length > 5) {
             url = `https://www.vesselfinder.com/aismap?zoom=13&mmsi=${mmsi.trim()}&names=true`;
@@ -18,7 +17,7 @@ function toggleMap(show, mmsi = '', naam = '') {
         wrapper.style.display = 'block';
     } else {
         wrapper.style.display = 'none';
-        frame.src = ""; // Stop met laden om data en batterij te besparen
+        frame.src = ""; 
     }
 }
 
@@ -53,10 +52,8 @@ initDB().then(() => {
 
 let geselecteerdeFotos = [];
 
-// Foto's verwerken
 async function handleFileSelect(event) {
     const files = event.target.files;
-    if (!files) return;
     for (let i = 0; i < files.length; i++) {
         const compressedDataUrl = await compressImage(files[i]);
         geselecteerdeFotos.push(compressedDataUrl);
@@ -95,7 +92,6 @@ function renderPreviews() {
     });
 }
 
-// Opslaan inclusief MMSI
 function saveBoat() {
     const naam = document.getElementById('newBoatName').value.trim();
     const mmsi = document.getElementById('boatMmsi').value.trim();
@@ -133,61 +129,71 @@ function saveBoat() {
     transaction.oncomplete = () => { alert("Boot opgeslagen!"); showMain(); };
 }
 
-// Detail View (Met de Map Pin)
 function showDetails(id) {
     db.transaction(["boten"], "readonly").objectStore("boten").get(id).onsuccess = (e) => {
         const b = e.target.result;
-        
-        // Zorg dat de kaart eerst verborgen en gereset is
         toggleMap(false);
-        
-        // Pas de titel aan
         document.getElementById('detailName').innerText = b.naam;
-        
-        // Koppel de knoppen aan de juiste ID en gegevens
         document.getElementById('mapBtn').onclick = () => toggleMap(true, b.mmsi, b.naam);
         document.getElementById('delBtn').onclick = () => deleteBoat(b.id);
         
-        // Genereer de HTML voor de rest van de gegevens
         const cont = document.getElementById('detailContent');
         let html = "";
         
         const addRow = (label, val) => {
             if(val && (Array.isArray(val) ? val.length > 0 : val !== "")) {
                 html += `<div class="input-group"><label class="label-tiny">${label}</label>
-                         <div style="font-size:16px; font-weight:500;">${Array.isArray(val) ? val.join(', ') : val}</div></div>`;
+                         <div style="font-size:16px; font-weight:500;">${val}</div></div>`;
             }
         };
 
-        // HIER IS DE MMSI REGEL VERWIJDERD! HIJ STAAT NIET MEER IN HET OVERZICHT.
+        // AUTOMATISCHE VERWERKING: Als 'Mix' aan staat, komt er altijd "op Scheel" achter[span_2](start_span)[span_2](end_span)
+        let systeemLijst = b.systeem ? [...b.systeem] : [];
+        let systeemWeergave = "";
 
-        let systeemTekst = b.systeem ? b.systeem.join(', ') : "";
-        if(b.systeem && b.systeem.includes('Mix')) {
-            systeemTekst = systeemTekst.replace('Mix', `Mix (Bay ${b.mix.van || '?'}-${b.mix.tot || '?'})`);
+        if(systeemLijst.includes('Mix')) {
+            // De tekst "op Scheel" wordt nu automatisch toegevoegd en in het klein gezet[span_3](start_span)[span_3](end_span)
+            let kleinType = `<span style="color: #7f8c8d; font-size: 0.85em; font-weight: 400; margin-left: 4px;">("op Scheel")</span>`;
+
+            let van = b.mix?.van || "";
+            let tot = b.mix?.tot || "";
+            
+            let bayZin = "";
+            if (van) {
+                bayZin = van + (tot ? " t.e.m. " + tot : "");
+            }
+
+            let mixTekst = `${bayZin} ${kleinType}`.trim();
+            
+            // Filter 'Mix' eruit voor de lijst, maar behoud de andere systemen als die er zijn[span_4](start_span)[span_4](end_span)
+            let overig = systeemLijst.filter(s => s !== 'Mix');
+            systeemWeergave = overig.length > 0 ? mixTekst + ", " + overig.join(', ') : mixTekst;
+        } else {
+            systeemWeergave = systeemLijst.join(', ');
         }
 
-        addRow("SYSTEEM", systeemTekst);
-        addRow("BAREN", b.baren);
-        addRow("LASHING", b.lashing);
-        addRow("DRAAD", b.draad);
-        addRow("TURNBUCKLES", b.tb);
+        addRow("SYSTEEM", systeemWeergave);
+        addRow("BAREN", b.baren ? b.baren.join(', ') : "");
+        addRow("LASHING", b.lashing ? b.lashing.join(', ') : "");
+        addRow("DRAAD", b.draad ? b.draad.join(', ') : "");
+        addRow("TURNBUCKLES", b.tb ? b.tb.join(', ') : "");
         
         let c20data = b.c20 ? [...b.c20] : [];
         if(b.tegenElkaar) c20data.push("Tegen elkaar");
-        addRow("20FT", c20data);
+        addRow("20FT", c20data.join(', '));
         
-        addRow("OPKUIS", b.opkuis);
+        addRow("OPKUIS", b.opkuis ? b.opkuis.join(', ') : "");
         addRow("OPMERKINGEN", b.notities);
 
         if(b.fotos && b.fotos.length > 0) {
             html += `<label class="label-tiny" style="margin-top:15px">FOTO'S</label><div class="img-row">`;
-            b.fotos.forEach(f => { html += `<img src="${f}" style="width:120px; height:120px; border-radius:10px; object-fit:cover;">`; });
+            b.fotos.forEach(f => { 
+                html += `<img src="${f}" onclick="openZoom('${f}')" style="width:120px; height:120px; border-radius:10px; object-fit:cover; cursor:pointer;">`; 
+            });
             html += `</div>`;
         }
         
-        // Voeg een knop 'Bewerken' toe onderaan de details
         html += `<div style="padding: 20px 0;"><button class="btn-flat" onclick="editBoat(${b.id})">BEWERKEN</button></div>`;
-
         cont.innerHTML = html;
 
         document.getElementById('mainView').style.display = 'none';
@@ -216,6 +222,7 @@ function openCatalog() {
             div.style.justifyContent = "space-between";
             div.style.alignItems = "center";
             div.style.padding = "12px 0";
+
             div.innerHTML = `
                 <div onclick="showDetails(${b.id})" style="flex:1; cursor:pointer;">
                     <div style="font-size:16px; font-weight:600; color: #333;">${b.naam}</div>
@@ -355,4 +362,11 @@ function switchPlanning(t) {
     document.getElementById('frameOut').style.display = t === 'out' ? 'block' : 'none';
     document.getElementById('btnIn').classList.toggle('active', t === 'in');
     document.getElementById('btnOut').classList.toggle('active', t === 'out');
+}
+
+function openZoom(src) {
+    const overlay = document.getElementById('photoZoomOverlay');
+    const zoomedImg = document.getElementById('zoomedImage');
+    zoomedImg.src = src;
+    overlay.style.display = 'flex';
 }
